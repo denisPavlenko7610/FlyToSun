@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 03487ca7830e21b4ba07b4af88cfb7f4
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 218540
+  packageName: 2D Bird Game Mobile
+  packageVersion: 1.0.4
+  assetPath: Assets/2D Bird Game Mobile/Animation/AnimatoingameOver.anim
+  uploadId: 657759

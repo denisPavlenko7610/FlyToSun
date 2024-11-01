@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 9c4ae4a508626a74fa9b0caef17bbe24
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 218540
+  packageName: 2D Bird Game Mobile
+  packageVersion: 1.0.4
+  assetPath: Assets/2D Bird Game Mobile/Script/TuchStop.cs
+  uploadId: 657759
