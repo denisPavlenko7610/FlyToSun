@@ -1,140 +1,128 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.Serialization;
 
 namespace Goldmetal.UndeadSurvivor
 {
     public class GameManager : MonoBehaviour
     {
-        public static GameManager instance;
-        [Header("# Game Control")]
-        public bool isLive;
-        public float gameTime;
-        public float maxGameTime = 2 * 10f;
-        [Header("# Player Info")]
-        public int playerId;
-        public float health;
-        public float maxHealth = 100;
-        public int level;
-        public int kill;
-        public int exp;
-        public int[] nextExp = { 3, 5, 10, 100, 150, 210, 280, 360, 450, 600 };
-        [Header("# Game Object")]
-        public PoolManager pool;
-        public Player player;
-        public LevelUp uiLevelUp;
-        public Result uiResult;
-        public Transform uiJoy;
-        public GameObject enemyCleaner;
+        public static GameManager Instance { get; private set; }
 
-        void Awake()
+        [Header("# Game Control")]
+        public bool IsLive { get; private set; }
+        public float GameTime { get; private set; }
+        public float MaxGameTime { get; private set; } = 20f; // Changed to 20s (2 * 10)
+
+        [Header("# Player Info")]
+        public int PlayerId { get; private set; }
+        public float Health { get; set; }
+        public float MaxHealth { get; private set; } = 100f;
+        public int Level { get; private set; }
+        public int KillCount { get; set; }
+        public int Experience { get; private set; }
+        [FormerlySerializedAs("NextExp")] public int[] NextExperience = { 3, 5, 10, 100, 150, 210, 280, 360, 450, 600 };
+
+        [Header("# Game Object")]
+        public PoolManager Pool;
+        public Player Player;
+        public LevelUp UiLevelUp;
+        public Result UiResult;
+        public Transform UiJoy;
+        public GameObject EnemyCleaner;
+
+        private const float GameOverDelay = 0.5f;
+
+        private void Awake()
         {
-            instance = this;
+            Instance = this;
             Application.targetFrameRate = 60;
         }
 
-        public void GameStart(int id)
+        public void StartGame(int playerId)
         {
-            playerId = id;
-            health = maxHealth;
-
-            player.gameObject.SetActive(true);
-            uiLevelUp.Select(playerId % 2);
+            PlayerId = playerId;
+            Health = MaxHealth;
+            Player.gameObject.SetActive(true);
+            UiLevelUp.Select(playerId % 2);
             Resume();
-
-            AudioManager.instance.PlayBgm(true);
-            AudioManager.instance.PlaySfx(AudioManager.Sfx.Select);
+            PlaySound(AudioManager.Sfx.Select);
         }
 
-        public void GameOver()
+        public void GameOver() => StartCoroutine(HandleGameOver());
+
+        private IEnumerator HandleGameOver()
         {
-            StartCoroutine(GameOverRoutine());
+            IsLive = false;
+            yield return new WaitForSeconds(GameOverDelay);
+            UiResult.gameObject.SetActive(true);
+            UiResult.ShowResult(Result.ResultType.Lose);
+            StopGame();
+            PlaySound(AudioManager.Sfx.Lose);
         }
 
-        IEnumerator GameOverRoutine()
+        public void GameVictory() => StartCoroutine(HandleGameVictory());
+
+        private IEnumerator HandleGameVictory()
         {
-            isLive = false;
-
-            yield return new WaitForSeconds(0.5f);
-
-            uiResult.gameObject.SetActive(true);
-            uiResult.Lose();
-            Stop();
-
-            AudioManager.instance.PlayBgm(false);
-            AudioManager.instance.PlaySfx(AudioManager.Sfx.Lose);
+            IsLive = false;
+            EnemyCleaner.SetActive(true);
+            yield return new WaitForSeconds(GameOverDelay);
+            UiResult.gameObject.SetActive(true);
+            UiResult.ShowResult(Result.ResultType.Win);
+            StopGame();
+            PlaySound(AudioManager.Sfx.Win);
         }
 
-        public void GameVictroy()
+        public void RetryGame() => SceneManager.LoadScene(0);
+
+        public void QuitGame() => Application.Quit();
+
+        private void Update()
         {
-            StartCoroutine(GameVictroyRoutine());
-        }
+            if (!IsLive) return;
 
-        IEnumerator GameVictroyRoutine()
-        {
-            isLive = false;
-            enemyCleaner.SetActive(true);
+            GameTime += Time.deltaTime;
 
-            yield return new WaitForSeconds(0.5f);
-
-            uiResult.gameObject.SetActive(true);
-            uiResult.Win();
-            Stop();
-
-            AudioManager.instance.PlayBgm(false);
-            AudioManager.instance.PlaySfx(AudioManager.Sfx.Win);
-        }
-
-        public void GameRetry()
-        {
-            SceneManager.LoadScene(0);
-        }
-
-        public void GameQuit()
-        {
-            Application.Quit();
-        }
-
-        void Update()
-        {
-            if (!isLive)
-                return;
-
-            gameTime += Time.deltaTime;
-
-            if (gameTime > maxGameTime) {
-                gameTime = maxGameTime;
-                GameVictroy();
+            if (GameTime >= MaxGameTime)
+            {
+                GameTime = MaxGameTime;
+                GameVictory();
             }
         }
 
-        public void GetExp()
+        public void GainExperience()
         {
-            if (!isLive)
-                return;
+            if (!IsLive) return;
 
-            exp++;
+            Experience++;
 
-            if (exp == nextExp[Mathf.Min(level, nextExp.Length - 1)]) {
-                level++;
-                exp = 0;
-                uiLevelUp.Show();
+            if (Experience >= NextExperience[Mathf.Min(Level, NextExperience.Length - 1)])
+            {
+                Level++;
+                Experience = 0;
+                UiLevelUp.Show();
             }
         }
 
-        public void Stop()
+        public void StopGame()
         {
-            isLive = false;
+            IsLive = false;
             Time.timeScale = 0;
-            uiJoy.localScale = Vector3.zero;
+            UiJoy.localScale = Vector3.zero;
         }
 
         public void Resume()
         {
-            isLive = true;
+            IsLive = true;
             Time.timeScale = 1;
-            uiJoy.localScale = Vector3.one;
+            UiJoy.localScale = Vector3.one;
+        }
+
+        private void PlaySound(AudioManager.Sfx sound)
+        {
+            AudioManager.Instance.PlaySfx(sound);
+            AudioManager.Instance.PlayBgm(IsLive);
         }
     }
 }

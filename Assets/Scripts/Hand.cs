@@ -6,15 +6,15 @@ namespace Goldmetal.UndeadSurvivor
 {
     public class Hand : MonoBehaviour
     {
-        public bool isLeft;
-        public SpriteRenderer spriter;
+        [SerializeField] private bool isLeft; 
+        [SerializeField] private SpriteRenderer spriter;
 
-        SpriteRenderer player;
+        private SpriteRenderer player;
 
-        Vector3 rightPos = new Vector3(0.35f, -0.15f, 0);
-        Vector3 rightPosReverse = new Vector3(-0.15f, -0.15f, 0);
-        Quaternion leftRot = Quaternion.Euler(0, 0, -35);
-        Quaternion leftRotReverse = Quaternion.Euler(0, 0, -135);
+        private static readonly Vector3 RightHandPosition = new Vector3(0.35f, -0.15f, 0);
+        private static readonly Vector3 RightHandPositionReverse = new Vector3(-0.15f, -0.15f, 0);
+        private static readonly Quaternion LeftHandRotation = Quaternion.Euler(0, 0, -35);
+        private static readonly Quaternion LeftHandRotationReverse = Quaternion.Euler(0, 0, -135);
 
         void Awake()
         {
@@ -23,18 +23,40 @@ namespace Goldmetal.UndeadSurvivor
 
         void LateUpdate()
         {
+            UpdateHandPositionAndRotation();
+        }
+
+        public SpriteRenderer getSpriteRendererFromHand()
+        {
+            return spriter;
+        }
+        
+        private void UpdateHandPositionAndRotation()
+        {
             bool isReverse = player.flipX;
 
-            if (isLeft) { // 근접무기
-                transform.localRotation = isReverse ? leftRotReverse : leftRot;
-                spriter.flipY = isReverse;
-                spriter.sortingOrder = isReverse ? 4 : 6;
+            if (isLeft)
+            {
+                UpdateLeftHand(isReverse);
             }
-            else { // 원거리무기
-                transform.localPosition = isReverse ? rightPosReverse : rightPos;
-                spriter.flipX = isReverse;
-                spriter.sortingOrder = isReverse ? 6 : 4;
+            else
+            {
+                UpdateRightHand(isReverse);
             }
+        }
+
+        private void UpdateLeftHand(bool isReverse)
+        {
+            transform.localRotation = isReverse ? LeftHandRotationReverse : LeftHandRotation;
+            spriter.flipY = isReverse;
+            spriter.sortingOrder = isReverse ? 4 : 6;
+        }
+        
+        private void UpdateRightHand(bool isReverse)
+        {
+            transform.localPosition = isReverse ? RightHandPositionReverse : RightHandPosition;
+            spriter.flipX = isReverse;
+            spriter.sortingOrder = isReverse ? 6 : 4;
         }
     }
 }

@@ -1,34 +1,20 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace Goldmetal.UndeadSurvivor
 {
     public class Character : MonoBehaviour
     {
-        public static float Speed
-        {
-            get { return GameManager.instance.playerId == 0 ? 1.1f : 1f; }
-        }
+        private static GameManager gameManager => GameManager.Instance;
 
-        public static float WeaponSpeed
-        {
-            get { return GameManager.instance.playerId == 1 ? 1.1f : 1f; }
-        }
+        public static float Speed => GetPlayerStat(1.1f, 1f);
+        public static float WeaponSpeed => GetPlayerStat(1.1f, 1f, 1);
+        public static float WeaponRate => GetPlayerStat(0.9f, 1f, 1);
+        public static float Damage => GetPlayerStat(1.2f, 1f, 2);
+        public static int Count => GetPlayerStat(1, 0, 3);
 
-        public static float WeaponRate
+        private static T GetPlayerStat<T>(T playerValue, T defaultValue, int? playerId = null)
         {
-            get { return GameManager.instance.playerId == 1 ? 0.9f : 1f; }
-        }
-
-        public static float Damage
-        {
-            get { return GameManager.instance.playerId == 2 ? 1.2f : 1f; }
-        }
-
-        public static int Count
-        {
-            get { return GameManager.instance.playerId == 3 ? 1 : 0; }
+            return gameManager.PlayerId == playerId ? playerValue : defaultValue;
         }
     }
 }

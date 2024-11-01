@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -6,37 +5,48 @@ namespace Goldmetal.UndeadSurvivor
 {
     public class PoolManager : MonoBehaviour
     {
-        public GameObject[] prefabs;
+        [SerializeField]
+        private GameObject[] prefabs;
 
-        List<GameObject>[] pools;
+        private List<GameObject>[] pools;
 
-        void Awake()
+        private void Awake()
+        {
+            InitializePools();
+        }
+
+        public int GetPoolLength() => pools.Length;
+
+        private void InitializePools()
         {
             pools = new List<GameObject>[prefabs.Length];
 
-            for (int index = 0; index < pools.Length; index++) {
+            for (int index = 0; index < pools.Length; index++)
+            {
                 pools[index] = new List<GameObject>();
             }
         }
-
+        
         public GameObject Get(int index)
         {
-            GameObject select = null;
+            if (index < 0 || index >= prefabs.Length)
+            {
+                Debug.LogError("Index out of bounds: " + index);
+                return null; // Return null if index is invalid
+            }
 
-            foreach (GameObject item in pools[index]) {
-                if (!item.activeSelf) {
-                    select = item;
-                    select.SetActive(true);
-                    break;
+            foreach (GameObject item in pools[index])
+            {
+                if (!item.activeSelf)
+                {
+                    item.SetActive(true);
+                    return item;
                 }
             }
 
-            if (!select) {
-                select = Instantiate(prefabs[index], transform);
-                pools[index].Add(select);
-            }
-
-            return select;
+            GameObject newObject = Instantiate(prefabs[index], transform);
+            pools[index].Add(newObject);
+            return newObject;
         }
     }
 }

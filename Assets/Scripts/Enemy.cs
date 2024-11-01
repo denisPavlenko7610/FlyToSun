@@ -1,113 +1,127 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace Goldmetal.UndeadSurvivor
 {
     public class Enemy : MonoBehaviour
     {
+        [Header("Enemy Properties")]
         public float speed;
         public float health;
         public float maxHealth;
-        public RuntimeAnimatorController[] animCon;
-        public Rigidbody2D target;
+        public RuntimeAnimatorController[] animatorControllers;
 
-        bool isLive;
+        private Rigidbody2D target;
+        private Rigidbody2D rigidBody;
+        private Collider2D collider;
+        private Animator animator;
+        private SpriteRenderer spriteRenderer;
+        private WaitForFixedUpdate wait;
 
-        Rigidbody2D rigid;
-        Collider2D coll;
-        Animator anim;
-        SpriteRenderer spriter;
-        WaitForFixedUpdate wait;
+        private bool isAlive;
 
-        void Awake()
+        private void Awake()
         {
-            rigid = GetComponent<Rigidbody2D>();
-            coll = GetComponent<Collider2D>();
-            anim = GetComponent<Animator>();
-            spriter = GetComponent<SpriteRenderer>();
+            rigidBody = GetComponent<Rigidbody2D>();
+            collider = GetComponent<Collider2D>();
+            animator = GetComponent<Animator>();
+            spriteRenderer = GetComponent<SpriteRenderer>();
             wait = new WaitForFixedUpdate();
         }
 
-        void FixedUpdate()
+        private void FixedUpdate()
         {
-            if (!GameManager.instance.isLive)
+            if (!GameManager.Instance.IsLive || !isAlive || animator.GetCurrentAnimatorStateInfo(0).IsName("Hit"))
                 return;
 
-            if (!isLive || anim.GetCurrentAnimatorStateInfo(0).IsName("Hit"))
-                return;
-
-            Vector2 dirVec = target.position - rigid.position;
-            Vector2 nextVec = dirVec.normalized * speed * Time.fixedDeltaTime;
-            rigid.MovePosition(rigid.position + nextVec);
-            rigid.linearVelocity = Vector2.zero;
+            MoveTowardsTarget();
         }
 
-        void LateUpdate()
+        private void MoveTowardsTarget()
         {
-            if (!GameManager.instance.isLive)
-                return;
-
-            if (!isLive)
-                return;
-
-            spriter.flipX = target.position.x < rigid.position.x;
+            Vector2 direction = target.position - rigidBody.position;
+            Vector2 nextPosition = direction.normalized * (speed * Time.fixedDeltaTime);
+            rigidBody.MovePosition(rigidBody.position + nextPosition);
+            rigidBody.linearVelocity = Vector2.zero;
         }
 
-        void OnEnable()
+        private void LateUpdate()
         {
-            target = GameManager.instance.player.GetComponent<Rigidbody2D>();
-            isLive = true;
-            coll.enabled = true;
-            rigid.simulated = true;
-            spriter.sortingOrder = 2;
-            anim.SetBool("Dead", false);
+            if (GameManager.Instance.IsLive && isAlive)
+                spriteRenderer.flipX = target.position.x < rigidBody.position.x;
+        }
+
+        private void OnEnable()
+        {
+            target = GameManager.Instance.Player.GetComponent<Rigidbody2D>();
+            ResetEnemyState();
+        }
+
+        private void ResetEnemyState()
+        {
+            isAlive = true;
+            collider.enabled = true;
+            rigidBody.simulated = true;
+            spriteRenderer.sortingOrder = 2;
+            animator.SetBool("Dead", false);
             health = maxHealth;
         }
 
         public void Init(SpawnData data)
         {
-            anim.runtimeAnimatorController = animCon[data.spriteType];
+            animator.runtimeAnimatorController = animatorControllers[data.spriteType];
             speed = data.speed;
             maxHealth = data.health;
             health = data.health;
         }
 
-        void OnTriggerEnter2D(Collider2D collision)
+        private void OnTriggerEnter2D(Collider2D collision)
         {
-            if (!collision.CompareTag("Bullet") || !isLive)
-                return;
+            if (collision.CompareTag("Bullet") && isAlive)
+            {
+                TakeDamage(collision.GetComponent<Bullet>().Damage);
+            }
+        }
 
-            health -= collision.GetComponent<Bullet>().damage;
+        private void TakeDamage(float damage)
+        {
+            health -= damage;
             StartCoroutine(KnockBack());
 
-            if (health > 0) {
-                anim.SetTrigger("Hit");
-                AudioManager.instance.PlaySfx(AudioManager.Sfx.Hit);
+            if (health > 0)
+            {
+                animator.SetTrigger("Hit");
+                AudioManager.Instance.PlaySfx(AudioManager.Sfx.Hit);
             }
-            else {
-                isLive = false;
-                coll.enabled = false;
-                rigid.simulated = false;
-                spriter.sortingOrder = 1;
-                anim.SetBool("Dead", true);
-                GameManager.instance.kill++;
-                GameManager.instance.GetExp();
-
-                if (GameManager.instance.isLive)
-                    AudioManager.instance.PlaySfx(AudioManager.Sfx.Dead);
+            else
+            {
+                Die();
             }
         }
 
-        IEnumerator KnockBack()
+        private void Die()
         {
-            yield return wait; // ���� �ϳ��� ���� ������ ������
-            Vector3 playerPos = GameManager.instance.player.transform.position;
-            Vector3 dirVec = transform.position - playerPos;
-            rigid.AddForce(dirVec.normalized * 3, ForceMode2D.Impulse);
+            isAlive = false;
+            collider.enabled = false;
+            rigidBody.simulated = false;
+            spriteRenderer.sortingOrder = 1;
+            animator.SetBool("Dead", true);
+            GameManager.Instance.KillCount++;
+            GameManager.Instance.GainExperience();
+
+            if (GameManager.Instance.IsLive)
+                AudioManager.Instance.PlaySfx(AudioManager.Sfx.Dead);
         }
 
-        void Dead()
+        private IEnumerator KnockBack()
+        {
+            yield return wait;
+            Vector3 playerPosition = GameManager.Instance.Player.transform.position;
+            Vector3 knockBackDirection = transform.position - playerPosition;
+            rigidBody.AddForce(knockBackDirection.normalized * 3f, ForceMode2D.Impulse);
+        }
+
+        private void Dead()
         {
             gameObject.SetActive(false);
         }

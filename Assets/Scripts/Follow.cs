@@ -1,21 +1,25 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace Goldmetal.UndeadSurvivor
 {
     public class Follow : MonoBehaviour
     {
-        RectTransform rect;
+        private RectTransform rectTransform;
+        private Camera mainCamera;
 
-        void Awake()
+        private void Awake()
         {
-            rect = GetComponent<RectTransform>();
+            rectTransform = GetComponent<RectTransform>();
+            mainCamera = Camera.main; // Cache the main camera reference
         }
 
-        void FixedUpdate()
+        private void LateUpdate()
         {
-            rect.position = Camera.main.WorldToScreenPoint(GameManager.instance.player.transform.position);
+            if (mainCamera && GameManager.Instance && GameManager.Instance.Player)
+            {
+                Vector3 playerScreenPosition = mainCamera.WorldToScreenPoint(GameManager.Instance.Player.transform.position);
+                rectTransform.position = playerScreenPosition;
+            }
         }
     }
 }

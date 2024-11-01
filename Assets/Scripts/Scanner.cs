@@ -1,39 +1,35 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 
 namespace Goldmetal.UndeadSurvivor
 {
     public class Scanner : MonoBehaviour
     {
-        public float scanRange;
-        public LayerMask targetLayer;
-        public RaycastHit2D[] targets;
-        public Transform nearestTarget;
+        [SerializeField] private float scanRange;  // Serialized for editor access while keeping private.
+        [SerializeField] private LayerMask targetLayer;  // Serialized for editor access while keeping private.
 
-        void FixedUpdate()
+        public Transform NearestTarget { get; private set; }  // Public property for external access.
+
+        private void FixedUpdate()
         {
-            targets = Physics2D.CircleCastAll(transform.position, scanRange, Vector2.zero, 0, targetLayer);
-            nearestTarget = GetNearest();
+            var targets = FindTargets();
+            NearestTarget = GetNearestTarget(targets);
         }
 
-        Transform GetNearest()
+        private RaycastHit2D[] FindTargets()
         {
-            Transform result = null;
-            float diff = 100;
+            return Physics2D.CircleCastAll(transform.position, scanRange, Vector2.zero, 0, targetLayer);
+        }
 
-            foreach (RaycastHit2D target in targets) {
-                Vector3 myPos = transform.position;
-                Vector3 targetPos = target.transform.position;
-                float curDiff = Vector3.Distance(myPos, targetPos);
+        private Transform GetNearestTarget(RaycastHit2D[] targets)
+        {
+            if (targets.Length == 0) return null;  // Early return if no targets found.
 
-                if (curDiff < diff) {
-                    diff = curDiff;
-                    result = target.transform;
-                }
-            }
-
-            return result;
+            return targets
+                .Select(target => target.transform)
+                .OrderBy(t => Vector3.Distance(transform.position, t.position))
+                .FirstOrDefault();  // Returns the closest target or null if none are found.
         }
     }
 }

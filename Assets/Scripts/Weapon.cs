@@ -6,131 +6,182 @@ namespace Goldmetal.UndeadSurvivor
 {
     public class Weapon : MonoBehaviour
     {
-        public int id;
-        public int prefabId;
-        public float damage;
-        public int count;
-        public float speed;
+        public int Id { get; private set; }
+        public int PrefabId { get; private set; }
+        public float Damage { get; private set; }
+        public int Count { get; private set; }
+        public float Speed { get; set; }
 
-        float timer;
-        Player player;
+        private const float InfinityPer = -100f;
+        private const float RotationSpeedMultiplier = 150f;
+        private const float FireRateMultiplier = 0.5f;
+        private const float BulletOffset = 1.5f;
 
-        void Awake()
+        private float _timer;
+        private Player _player;
+
+        private void Awake()
         {
-            player = GameManager.instance.player;
+            _player = GameManager.Instance.Player;
         }
 
-        void Update()
+        private void Update()
         {
-            if (!GameManager.instance.isLive)
+            if (!GameManager.Instance.IsLive)
                 return;
 
-            switch (id) {
+            HandleWeaponRotationAndFire();
+            HandleTestInput();
+        }
+
+        private void HandleWeaponRotationAndFire()
+        {
+            switch (Id)
+            {
                 case 0:
-                    transform.Rotate(Vector3.back * speed * Time.deltaTime);
+                    RotateWeapon();
                     break;
                 default:
-                    timer += Time.deltaTime;
-
-                    if (timer > speed) {
-                        timer = 0f;
-                        Fire();
-                    }
+                    FireAtIntervals();
                     break;
             }
+        }
 
-            // .. Test Code..
-            if (Input.GetButtonDown("Jump")) {
+        private void RotateWeapon()
+        {
+            transform.Rotate(Vector3.back * (Speed * Time.deltaTime));
+        }
+
+        private void FireAtIntervals()
+        {
+            _timer += Time.deltaTime;
+
+            if (_timer > Speed)
+            {
+                _timer = 0f;
+                Fire();
+            }
+        }
+
+        private void HandleTestInput()
+        {
+            if (Input.GetButtonDown("Jump"))
+            {
                 LevelUp(10, 1);
             }
         }
 
-        public void LevelUp(float damage, int count)
+        public void LevelUp(float damageIncrease, int countIncrease)
         {
-            this.damage = damage * Character.Damage;
-            this.count += count;
+            Damage = damageIncrease * Character.Damage;
+            Count += countIncrease;
 
-            if (id == 0)
+            if (Id == 0)
                 Batch();
 
-            player.BroadcastMessage("ApplyGear", SendMessageOptions.DontRequireReceiver);
+            _player.BroadcastMessage("ApplyGear", SendMessageOptions.DontRequireReceiver);
         }
 
         public void Init(ItemData data)
         {
-            // Basic Set
-            name = "Weapon " + data.itemId;
-            transform.parent = player.transform;
+            SetBasicProperties(data);
+            SetWeaponProperties(data);
+            SetHandSprite(data);
+            _player.BroadcastMessage("ApplyGear", SendMessageOptions.DontRequireReceiver);
+        }
+
+        private void SetBasicProperties(ItemData data)
+        {
+            name = "Weapon " + data.ItemId;
+            transform.parent = _player.transform;
             transform.localPosition = Vector3.zero;
+            Id = data.ItemId;
+            Damage = data.BaseDamage * Character.Damage;
+            Count = data.BaseCount + Character.Count;
+            PrefabId = GetPrefabId(data);
+        }
 
-            // Property Set
-            id = data.itemId;
-            damage = data.baseDamage * Character.Damage;
-            count = data.baseCount + Character.Count;
-
-            for (int index = 0; index < GameManager.instance.pool.prefabs.Length; index++) {
-                if (data.projectile == GameManager.instance.pool.prefabs[index]) {
-                    prefabId = index;
-                    break;
+        private int GetPrefabId(ItemData data)
+        {
+            for (int index = 0; index < GameManager.Instance.Pool.GetPoolLength(); index++)
+            {
+                if (data.Projectile == GameManager.Instance.Pool.Get(index))
+                {
+                    return index;
                 }
             }
+            return -1; // Or throw an exception if not found
+        }
 
-            switch (id) {
+        private void SetWeaponProperties(ItemData data)
+        {
+            switch (Id)
+            {
                 case 0:
-                    speed = 150 * Character.WeaponSpeed;
+                    Speed = RotationSpeedMultiplier * Character.WeaponSpeed;
                     Batch();
                     break;
                 default:
-                    speed = 0.5f * Character.WeaponRate;
+                    Speed = FireRateMultiplier * Character.WeaponRate;
                     break;
             }
-
-            // Hand Set
-            Hand hand = player.hands[(int)data.itemType];
-            hand.spriter.sprite = data.hand;
-            hand.gameObject.SetActive(true);
-
-            player.BroadcastMessage("ApplyGear", SendMessageOptions.DontRequireReceiver);
         }
 
-        void Batch()
+        private void SetHandSprite(ItemData data)
         {
-            for (int index = 0; index < count; index++) {
-                Transform bullet;
+            Hand hand = _player.getHand((int)data.Type);
+            hand.getSpriteRendererFromHand().sprite = data.Hand;
+            hand.gameObject.SetActive(true);
+        }
 
-                if (index < transform.childCount) {
-                    bullet = transform.GetChild(index);
-                }
-                else {
-                    bullet = GameManager.instance.pool.Get(prefabId).transform;
-                    bullet.parent = transform;
-                }
-
-                bullet.localPosition = Vector3.zero;
-                bullet.localRotation = Quaternion.identity;
-
-                Vector3 rotVec = Vector3.forward * 360 * index / count;
-                bullet.Rotate(rotVec);
-                bullet.Translate(bullet.up * 1.5f, Space.World);
-                bullet.GetComponent<Bullet>().Init(damage, -100, Vector3.zero); // -100 is Infinity Per.
+        private void Batch()
+        {
+            for (int index = 0; index < Count; index++)
+            {
+                Transform bullet = GetBulletTransform(index);
+                SetupBullet(bullet, index);
+                bullet.GetComponent<Bullet>().Initialize(Damage, (int)InfinityPer, Vector3.zero);
             }
         }
 
-        void Fire()
+        private Transform GetBulletTransform(int index)
         {
-            if (!player.scanner.nearestTarget)
+            if (index < transform.childCount)
+            {
+                return transform.GetChild(index);
+            }
+            else
+            {
+                Transform newBullet = GameManager.Instance.Pool.Get(PrefabId).transform;
+                newBullet.parent = transform;
+                return newBullet;
+            }
+        }
+
+        private void SetupBullet(Transform bullet, int index)
+        {
+            bullet.localPosition = Vector3.zero;
+            bullet.localRotation = Quaternion.identity;
+
+            Vector3 rotationVector = Vector3.forward * (360 * index) / Count;
+            bullet.Rotate(rotationVector);
+            bullet.Translate(bullet.up * BulletOffset, Space.World);
+        }
+
+        private void Fire()
+        {
+            if (!_player.getScanner().NearestTarget)
                 return;
 
-            Vector3 targetPos = player.scanner.nearestTarget.position;
-            Vector3 dir = targetPos - transform.position;
-            dir = dir.normalized;
+            Vector3 targetPosition = _player.getScanner().NearestTarget.position;
+            Vector3 direction = (targetPosition - transform.position).normalized;
 
-            Transform bullet = GameManager.instance.pool.Get(prefabId).transform;
+            Transform bullet = GameManager.Instance.Pool.Get(PrefabId).transform;
             bullet.position = transform.position;
-            bullet.rotation = Quaternion.FromToRotation(Vector3.up, dir);
-            bullet.GetComponent<Bullet>().Init(damage, count, dir);
+            bullet.rotation = Quaternion.FromToRotation(Vector3.up, direction);
+            bullet.GetComponent<Bullet>().Initialize(Damage, Count, direction);
 
-            AudioManager.instance.PlaySfx(AudioManager.Sfx.Range);
+            AudioManager.Instance.PlaySfx(AudioManager.Sfx.Range);
         }
     }
 }

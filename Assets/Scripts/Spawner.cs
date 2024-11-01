@@ -6,38 +6,66 @@ namespace Goldmetal.UndeadSurvivor
 {
     public class Spawner : MonoBehaviour
     {
-        public Transform[] spawnPoint;
-        public SpawnData[] spawnData;
-        public float levelTime;
+        [SerializeField] private Transform[] spawnPoints;  // Changed from public to serialized for better encapsulation.
+        [SerializeField] private SpawnData[] spawnData;  // Changed from public to serialized for better encapsulation.
+        private float levelTime;
 
-        int level;
-        float timer;
+        private int currentLevel;
+        private float spawnTimer;
 
-        void Awake()
+        private const int MinimumSpawnPointIndex = 1; // Prevents the first spawn point from being selected.
+        
+        private void Awake()
         {
-            spawnPoint = GetComponentsInChildren<Transform>();
-            levelTime = GameManager.instance.maxGameTime / spawnData.Length;
+            InitializeSpawnPoints();
+            CalculateLevelTime();
         }
 
-        void Update()
+        private void InitializeSpawnPoints()
         {
-            if (!GameManager.instance.isLive)
+            spawnPoints = GetComponentsInChildren<Transform>();
+        }
+
+        private void CalculateLevelTime()
+        {
+            levelTime = GameManager.Instance.MaxGameTime / spawnData.Length;
+        }
+
+        private void Update()
+        {
+            if (!GameManager.Instance.IsLive)
                 return;
 
-            timer += Time.deltaTime;
-            level = Mathf.Min(Mathf.FloorToInt(GameManager.instance.gameTime / levelTime), spawnData.Length - 1);
+            UpdateSpawnTimer();
+            CheckForSpawn();
+        }
 
-            if (timer > spawnData[level].spawnTime) {
-                timer = 0;
-                Spawn();
+        private void UpdateSpawnTimer()
+        {
+            spawnTimer += Time.deltaTime;
+            currentLevel = Mathf.Min(Mathf.FloorToInt(GameManager.Instance.GameTime / levelTime), spawnData.Length - 1);
+        }
+
+        private void CheckForSpawn()
+        {
+            if (spawnTimer > spawnData[currentLevel].spawnTime)
+            {
+                spawnTimer = 0; // Reset timer after spawning
+                SpawnEnemy();
             }
         }
 
-        void Spawn()
+        private void SpawnEnemy()
         {
-            GameObject enemy = GameManager.instance.pool.Get(0);
-            enemy.transform.position = spawnPoint[Random.Range(1, spawnPoint.Length)].position;
-            enemy.GetComponent<Enemy>().Init(spawnData[level]);
+            GameObject enemy = GameManager.Instance.Pool.Get(0);
+            enemy.transform.position = GetRandomSpawnPoint();
+            enemy.GetComponent<Enemy>().Init(spawnData[currentLevel]);
+        }
+
+        private Vector3 GetRandomSpawnPoint()
+        {
+            int randomIndex = Random.Range(MinimumSpawnPointIndex, spawnPoints.Length);
+            return spawnPoints[randomIndex].position;
         }
     }
 

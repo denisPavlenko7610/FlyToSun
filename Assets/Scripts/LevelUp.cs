@@ -1,71 +1,105 @@
-using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Goldmetal.UndeadSurvivor
 {
     public class LevelUp : MonoBehaviour
     {
-        RectTransform rect;
-        Item[] items;
+        private RectTransform rect;
+        private Item[] items;
 
-        void Awake()
+        private const int ITEM_COUNT = 3;
+
+        private void Awake()
         {
             rect = GetComponent<RectTransform>();
             items = GetComponentsInChildren<Item>(true);
         }
-
+        
         public void Show()
         {
-            Next();
-            rect.localScale = Vector3.one;
-            GameManager.instance.Stop();
-            AudioManager.instance.PlaySfx(AudioManager.Sfx.LevelUp);
-            AudioManager.instance.EffectBgm(true);
+            PrepareNextLevelItems();
+            SetUIVisibility(true);
+            GameManager.Instance.StopGame();
+            PlayLevelUpAudio();
         }
-
+        
         public void Hide()
         {
-            rect.localScale = Vector3.zero;
-            GameManager.instance.Resume();
-            AudioManager.instance.PlaySfx(AudioManager.Sfx.Select);
-            AudioManager.instance.EffectBgm(false);
+            SetUIVisibility(false);
+            GameManager.Instance.Resume();
+            PlaySelectAudio();
         }
 
         public void Select(int index)
         {
-            items[index].OnClick();
+            if (index >= 0 && index < items.Length)
+            {
+                items[index].OnClick();
+            }
         }
-
-        void Next()
+        
+        private void PrepareNextLevelItems()
         {
-            // 1. 모든 아이템 비활성화
-            foreach (Item item in items) {
+            DeactivateAllItems();
+
+            int[] randomIndices = GetUniqueRandomIndices(ITEM_COUNT);
+
+            for (int index = 0; index < randomIndices.Length; index++)
+            {
+                Item selectedItem = items[randomIndices[index]];
+                ActivateItemOrSpecial(selectedItem);
+            }
+        }
+        
+        private void DeactivateAllItems()
+        {
+            foreach (Item item in items)
+            {
                 item.gameObject.SetActive(false);
             }
+        }
+        
+        private void ActivateItemOrSpecial(Item item)
+        {
+            if (item.level == item.data.Damages.Length)
+            {
+                items[4].gameObject.SetActive(true);
+            }
+            else
+            {
+                item.gameObject.SetActive(true);
+            }
+        }
+        
+        private int[] GetUniqueRandomIndices(int count)
+        {
+            HashSet<int> uniqueIndices = new HashSet<int>();
 
-            // 2. 그 중에서 랜덤 3개 아이템 활성화
-            int[] ran = new int[3];
-            while (true) {
-                ran[0] = Random.Range(0, items.Length);
-                ran[1] = Random.Range(0, items.Length);
-                ran[2] = Random.Range(0, items.Length);
-
-                if (ran[0] != ran[1] && ran[1] != ran[2] && ran[0] != ran[2])
-                    break;
+            while (uniqueIndices.Count < count)
+            {
+                uniqueIndices.Add(Random.Range(0, items.Length));
             }
 
-            for (int index = 0; index < ran.Length; index++) {
-                Item ranItem = items[ran[index]];
+            return uniqueIndices.ToArray();
+        }
 
-                // 3. 만렙 아이템의 경우는 소비아이템으로 대체
-                if (ranItem.level == ranItem.data.damages.Length) {
-                    items[4].gameObject.SetActive(true);
-                }
-                else {
-                    ranItem.gameObject.SetActive(true);
-                }
-            }
+        private void SetUIVisibility(bool isVisible)
+        {
+            rect.localScale = isVisible ? Vector3.one : Vector3.zero;
+        }
+        
+        private void PlayLevelUpAudio()
+        {
+            AudioManager.Instance.PlaySfx(AudioManager.Sfx.LevelUp);
+            AudioManager.Instance.EffectBgm(true);
+        }
+        
+        private void PlaySelectAudio()
+        {
+            AudioManager.Instance.PlaySfx(AudioManager.Sfx.Select);
+            AudioManager.Instance.EffectBgm(false);
         }
     }
 }

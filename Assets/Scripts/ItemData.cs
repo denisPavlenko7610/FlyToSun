@@ -1,30 +1,53 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Goldmetal.UndeadSurvivor
 {
-    [CreateAssetMenu(fileName = "Item", menuName = "Scriptble Object/ItemData")]
+    [CreateAssetMenu(fileName = "Item", menuName = "Scriptable Object/ItemData")]
     public class ItemData : ScriptableObject
     {
         public enum ItemType { Melee, Range, Glove, Shoe, Heal }
 
-        [Header("# Main Info")]
-        public ItemType itemType;
-        public int itemId;
-        public string itemName;
-        [TextArea]
-        public string itemDesc;
-        public Sprite itemIcon;
+        [FormerlySerializedAs("itemType")]
+        [Header("Main Info")]
+        [SerializeField] private ItemType type;     
+        [SerializeField] private int itemId;            
+        [SerializeField] private string itemName;        
+        [FormerlySerializedAs("itemDesc")] [SerializeField, TextArea] private string description;
+        [SerializeField] private Sprite itemIcon;        
 
-        [Header("# Level Data")]
-        public float baseDamage;
-        public int baseCount;
-        public float[] damages;
-        public int[] counts;
+        [Header("Level Data")]
+        [SerializeField] private float baseDamage;       
+        [SerializeField] private int baseCount;         
+        [SerializeField] private float[] damages;       
+        [SerializeField] private int[] counts;       
 
-        [Header("# Weapon")]
-        public GameObject projectile;
-        public Sprite hand;
+        [Header("Weapon Properties")]
+        [SerializeField] private GameObject projectile; 
+        [SerializeField] private Sprite hand;
+
+
+        public ItemType Type => type;
+        public int ItemId => itemId;
+        public string ItemName => itemName;
+        public string Description => description;
+        public Sprite ItemIcon => itemIcon;
+        public float BaseDamage => baseDamage;
+        public int BaseCount => baseCount;
+        public float[] Damages => damages;
+        public int[] Counts => counts;
+        public GameObject Projectile => projectile;
+        public Sprite Hand => hand;
+
+        public void Validate()
+        {
+            if (damages.Length != counts.Length)
+            {
+                Debug.LogError($"Item {itemName} (ID: {itemId}) has mismatched damages and counts arrays.");
+            }
+
+        }
     }
 }

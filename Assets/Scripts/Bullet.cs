@@ -1,49 +1,59 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Goldmetal.UndeadSurvivor
 {
     public class Bullet : MonoBehaviour
     {
-        public float damage;
-        public int per;
+        [FormerlySerializedAs("damage")] [SerializeField]
+        private float _damage;
+        [SerializeField]
+        private int durability;
 
-        Rigidbody2D rigid;
+        public float Damage => _damage;
 
-        void Awake()
+        private Rigidbody2D rb;
+
+        private void Awake()
         {
-            rigid = GetComponent<Rigidbody2D>();
+            rb = GetComponent<Rigidbody2D>();
         }
 
-        public void Init(float damage, int per, Vector3 dir)
+        public void Initialize(float damage, int durability, Vector3 direction)
         {
-            this.damage = damage;
-            this.per = per;
+            this._damage = damage;
+            this.durability = durability;
 
-            if (per >= 0) {
-                rigid.linearVelocity = dir * 15f;
+            if (durability >= 0)
+            {
+                rb.linearVelocity = direction.normalized * 15f;
             }
         }
 
-        void OnTriggerEnter2D(Collider2D collision)
+        private void OnTriggerEnter2D(Collider2D other)
         {
-            if (!collision.CompareTag("Enemy") || per == -100)
+            if (!other.CompareTag("Enemy") || durability == -100)
                 return;
 
-            per--;
+            durability--;
 
-            if (per < 0) {
-                rigid.linearVelocity = Vector2.zero;
-                gameObject.SetActive(false);
+            if (durability < 0)
+            {
+                DisableBullet();
             }
         }
 
-        void OnTriggerExit2D(Collider2D collision)
+        private void OnTriggerExit2D(Collider2D other)
         {
-            if (!collision.CompareTag("Area") || per == -100)
+            if (!other.CompareTag("Area") || durability == -100)
                 return;
 
+            DisableBullet();
+        }
+
+        private void DisableBullet()
+        {
+            rb.linearVelocity = Vector2.zero;
             gameObject.SetActive(false);
         }
     }

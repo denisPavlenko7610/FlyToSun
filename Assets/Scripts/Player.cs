@@ -1,88 +1,138 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 
 namespace Goldmetal.UndeadSurvivor
 {
     public class Player : MonoBehaviour
     {
-        public Vector2 inputVec;
-        public float speed;
-        public Scanner scanner;
-        public Hand[] hands;
-        public RuntimeAnimatorController[] animCon;
+        [SerializeField]
+        private Vector2 inputVec;
+        [FormerlySerializedAs("speed")] [SerializeField]
+        private float _speed;
+        [SerializeField]
+        private Scanner scanner;
+        [SerializeField]
+        private Hand[] hands;
+        [SerializeField]
+        private RuntimeAnimatorController[] animCon;
 
-        Rigidbody2D rigid;
-        SpriteRenderer spriter;
-        Animator anim;
+        private Rigidbody2D rigidBody;
+        private SpriteRenderer spriteRenderer;
+        private Animator animator;
 
-        void Awake()
+        private void Awake()
         {
-            rigid = GetComponent<Rigidbody2D>();
-            spriter = GetComponent<SpriteRenderer>();
-            anim = GetComponent<Animator>();
+            InitializeComponents();
+        }
+
+        private void OnEnable()
+        {
+            InitializePlayer();
+        }
+
+        private void FixedUpdate()
+        {
+            if (GameManager.Instance.IsLive)
+            {
+                MovePlayer();
+            }
+        }
+
+        private void LateUpdate()
+        {
+            if (GameManager.Instance.IsLive)
+            {
+                UpdateAnimationAndSprite();
+            }
+        }
+
+        private void OnCollisionStay2D(Collision2D collision)
+        {
+            if (GameManager.Instance.IsLive)
+            {
+                HandleCollisionWithDamage();
+            }
+        }
+
+        public void setSpeed(float speed)
+        {
+            _speed = speed;
+        }
+
+        public Hand getHand(int index)
+        {
+            return hands[index];
+        }
+
+        public Scanner getScanner()
+        {
+            return scanner;
+        }
+
+        private void OnMove(InputValue value)
+        {
+            inputVec = value.Get<Vector2>();
+        }
+        
+        private void InitializeComponents()
+        {
+            rigidBody = GetComponent<Rigidbody2D>();
+            spriteRenderer = GetComponent<SpriteRenderer>();
+            animator = GetComponent<Animator>();
             scanner = GetComponent<Scanner>();
             hands = GetComponentsInChildren<Hand>(true);
         }
-
-        void OnEnable()
+        
+        private void InitializePlayer()
         {
-            speed *= Character.Speed;
-            anim.runtimeAnimatorController = animCon[GameManager.instance.playerId];
-        }
+            _speed *= Character.Speed;
 
-        void Update()
-        {
-            if (!GameManager.instance.isLive)
-                return;
-
-            //inputVec.x = Input.GetAxisRaw("Horizontal");
-            //inputVec.y = Input.GetAxisRaw("Vertical");
-        }
-
-        void FixedUpdate()
-        {
-            if (!GameManager.instance.isLive)
-                return;
-
-            Vector2 nextVec = inputVec.normalized * speed * Time.fixedDeltaTime;
-            rigid.MovePosition(rigid.position + nextVec);
-        }
-
-        void LateUpdate()
-        {
-            if (!GameManager.instance.isLive)
-                return;
-
-            anim.SetFloat("Speed", inputVec.magnitude);
-
-
-            if (inputVec.x != 0) {
-                spriter.flipX = inputVec.x < 0;
+            if (animCon.Length > GameManager.Instance.PlayerId)
+            {
+                animator.runtimeAnimatorController = animCon[GameManager.Instance.PlayerId];
+            }
+            else
+            {
+                Debug.LogError("Animator controller not found for player ID: " + GameManager.Instance.PlayerId);
             }
         }
-
-        void OnCollisionStay2D(Collision2D collision)
+        
+        private void MovePlayer()
         {
-            if (!GameManager.instance.isLive)
-                return;
+            Vector2 nextPosition = inputVec.normalized * (_speed * Time.fixedDeltaTime);
+            rigidBody.MovePosition(rigidBody.position + nextPosition);
+        }
+        
+        private void UpdateAnimationAndSprite()
+        {
+            animator.SetFloat("Speed", inputVec.magnitude);
 
-            GameManager.instance.health -= Time.deltaTime * 10;
-
-            if (GameManager.instance.health < 0) {
-                for (int index = 2; index < transform.childCount; index++) {
-                    transform.GetChild(index).gameObject.SetActive(false);
-                }
-
-                anim.SetTrigger("Dead");
-                GameManager.instance.GameOver();
+            if (inputVec.x != 0)
+            {
+                spriteRenderer.flipX = inputVec.x < 0;
             }
         }
-
-        void OnMove(InputValue value)
+        
+        private void HandleCollisionWithDamage()
         {
-            inputVec = value.Get<Vector2>();
+            GameManager.Instance.Health -= Time.deltaTime * 10;
+
+            if (GameManager.Instance.Health < 0)
+            {
+                HandlePlayerDeath();
+            }
+        }
+        
+        private void HandlePlayerDeath()
+        {
+            for (int index = 2; index < transform.childCount; index++)
+            {
+                transform.GetChild(index).gameObject.SetActive(false);
+            }
+
+            animator.SetTrigger("Dead");
+            GameManager.Instance.GameOver();
         }
     }
 }

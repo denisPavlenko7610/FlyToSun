@@ -18,7 +18,7 @@ namespace Goldmetal.UndeadSurvivor
             if (!collision.CompareTag("Area"))
                 return;
 
-            Vector3 playerPos = GameManager.instance.player.transform.position;
+            Vector3 playerPos = GameManager.Instance.Player.transform.position;
             Vector3 myPos = transform.position;
 
             switch (transform.tag) {
